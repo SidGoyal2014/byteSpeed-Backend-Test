@@ -1,8 +1,8 @@
 package bitespeed.backend.test.services;
 
-import bitespeed.backend.test.dto.contactDTO;
+import bitespeed.backend.test.dto.ContactDTO;
 
 public interface ContactService {
 
-    public contactDTO.IdentifyContactResponseDTO identifyContact(contactDTO.IdentifyContactRequestDTO identifyContactRequestDTO);
+    public ContactDTO.IdentifyContactResponseDTO identifyContact(ContactDTO.IdentifyContactRequestDTO identifyContactRequestDTO);
 }

@@ -1,12 +1,12 @@
 package bitespeed.backend.test.services.impl;
 
-import bitespeed.backend.test.dto.contactDTO.*;
+import bitespeed.backend.test.dto.ContactDTO.*;
 import bitespeed.backend.test.entity.Contact;
 import bitespeed.backend.test.repository.IContactRepository;
 import bitespeed.backend.test.services.ContactService;
 import org.springframework.stereotype.Service;
 import bitespeed.backend.test.enums.LinkPrecedence;
-import bitespeed.backend.test.dto.contactDTO.IdentifyContactResponseDTO;
+import bitespeed.backend.test.dto.ContactDTO.IdentifyContactResponseDTO;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

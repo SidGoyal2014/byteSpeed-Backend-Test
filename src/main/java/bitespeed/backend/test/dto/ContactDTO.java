@@ -1,24 +1,22 @@
 package bitespeed.backend.test.dto;
 
-import bitespeed.backend.test.enums.LinkPrecedence;
-import jakarta.persistence.Id;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
+import bitespeed.backend.test.entity.Contact;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import bitespeed.backend.test.enums.LinkPrecedence;
+
 import java.util.List;
 
-public class contactDTO {
+public class ContactDTO {
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public class IdentifyContactRequestDTO {
+    public static class IdentifyContactRequestDTO {
         private String email;
         private String phoneNumber;
     }
@@ -27,7 +25,7 @@ public class contactDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public class IdentifyContactResponseDTO {
+    public static class IdentifyContactResponseDTO {
         private IdentifyContactResponseSimpleContactDTO contact;
     }
 
@@ -35,7 +33,7 @@ public class contactDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public class IdentifyContactResponseSimpleContactDTO {
+    public static class IdentifyContactResponseSimpleContactDTO {
         private Integer primaryContatctId;
         private List<String> emails;
         private List<String> phoneNumbers;
@@ -46,7 +44,7 @@ public class contactDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    public class CreateContactDTO{
+    public static class CreateContactDTO{
         private String email;
         private String phoneNumber;
         private Integer linkedId;
