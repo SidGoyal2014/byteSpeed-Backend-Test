@@ -4,5 +4,5 @@ import bitespeed.backend.test.dto.contactDTO;
 
 public interface ContactService {
 
-    public void identifyContact(contactDTO.IdentifyContactRequestDTO identifyContactRequestDTO);
+    public contactDTO.IdentifyContactResponseDTO identifyContact(contactDTO.IdentifyContactRequestDTO identifyContactRequestDTO);
 }

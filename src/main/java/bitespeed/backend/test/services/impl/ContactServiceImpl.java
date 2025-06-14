@@ -3,11 +3,14 @@ package bitespeed.backend.test.services.impl;
 import bitespeed.backend.test.dto.contactDTO.*;
 import bitespeed.backend.test.entity.Contact;
 import bitespeed.backend.test.repository.IContactRepository;
-import bitespeed.backend.test.repository.IContactRepository;
 import bitespeed.backend.test.services.ContactService;
 import org.springframework.stereotype.Service;
+import bitespeed.backend.test.enums.LinkPrecedence;
+import bitespeed.backend.test.dto.contactDTO.IdentifyContactResponseDTO;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class ContactServiceImpl implements ContactService {
@@ -18,21 +21,100 @@ public class ContactServiceImpl implements ContactService {
         this.contactRepository = contactRepository;
     }
 
-    public void identifyContact(IdentifyContactRequestDTO identifyContactRequestDTO) {
+    @Override
+    public IdentifyContactResponseDTO identifyContact(IdentifyContactRequestDTO identifyContactRequestDTO) {
 
         // check if phone or email exists
         String phoneNumber = identifyContactRequestDTO.getPhoneNumber();
         String email = identifyContactRequestDTO.getEmail();
 
-        // if yes
+        // get all the matching contacts by phone or email
+        List<Contact> contactsByEmail = contactRepository.findByEmail(email);
+        List<Contact> contactsByPhone = contactRepository.findByPhoneNumber(phoneNumber);
 
-        // if no
+        // Create a list of all the contacts
+        List<Contact> allContacts = new ArrayList<>();
+        allContacts.addAll(contactsByEmail);
+        allContacts.addAll(contactsByPhone);
+
+        // Get the primary Contact
+        Contact primaryContact = getPrimaryContact(allContacts);
+
+        // Create Response Contact
+        IdentifyContactResponseSimpleContactDTO responseContact = null;
+
+        if((contactsByEmail == null || contactsByEmail.isEmpty()) && (contactsByPhone == null || contactsByPhone.isEmpty())){
+            // create a new Contact
+            CreateContactDTO createContactDTO = CreateContactDTO.builder()
+                                                    .email(email)
+                                                    .phoneNumber(phoneNumber)
+                                                    .linkPrecedence(LinkPrecedence.primary)
+                                                    .linkedId(null)
+                                                    .build();
+
+            Contact newContact = createContact(createContactDTO);
+
+            // Return response
+            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
+                    .primaryContatctId(createContactDTO.getLinkedId())
+                    .emails(List.of(createContactDTO.getEmail()))
+                    .phoneNumbers(List.of(createContactDTO.getPhoneNumber()))
+                    .secondaryContactIds(new ArrayList<>())
+                    .build();
+        }
+        else if(contactsByEmail != null && !contactsByEmail.isEmpty() && contactsByPhone != null && !contactsByPhone.isEmpty()){
+
+            // Return response
+            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
+                    .primaryContatctId(primaryContact.getId())
+                    .emails(allContacts.stream().map(Contact::getEmail).toList())
+                    .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).toList())
+                    .secondaryContactIds(allContacts.stream()
+                            .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.secondary)
+                            .map(Contact::getId)
+                            .toList())
+                    .build();
+        } else{
+            // create Contact
+            CreateContactDTO newContact = CreateContactDTO.builder()
+                    .email(email)
+                    .phoneNumber(phoneNumber)
+                    .linkPrecedence(LinkPrecedence.secondary)
+                    .linkedId(primaryContact.getId())
+                    .build();
+
+            Contact addedContact = createContact(newContact);
+
+            allContacts.add(addedContact);
+
+            // Return response
+            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
+                    .primaryContatctId(primaryContact.getId())
+                    .emails(allContacts.stream().map(Contact::getEmail).toList())
+                    .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).toList())
+                    .secondaryContactIds(allContacts.stream()
+                            .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.secondary)
+                            .map(Contact::getId)
+                            .toList())
+                    .build();
+        }
+
+        return IdentifyContactResponseDTO.builder()
+                .contact(responseContact)
+                .build();
+
     }
 
-    private void createContact(final CreateContactDTO createContactDTO){
+    private Contact getPrimaryContact(List<Contact> contacts){
+        return contacts.stream()
+                .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.primary)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Contact createContact(final CreateContactDTO createContactDTO){
 
         Contact contact = new Contact(
-                1,
                 createContactDTO.getEmail(),
                 createContactDTO.getPhoneNumber(),
                 createContactDTO.getLinkedId(),
@@ -42,14 +124,8 @@ public class ContactServiceImpl implements ContactService {
                 null
         );
 
-        createContactDTO.builder()
-                .email(createContactDTO.getEmail())
-                .phoneNumber(createContactDTO.getPhoneNumber())
-                .linkedId(createContactDTO.getLinkedId())
-                .linkPrecedence(createContactDTO.getLinkPrecedence())
-                .build();
-        // create contact logic
-        // save to database
-        // return response
+        contactRepository.save(contact);
+
+        return contact;
     }
 }
