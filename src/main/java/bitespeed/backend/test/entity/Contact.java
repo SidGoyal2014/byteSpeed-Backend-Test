@@ -1,9 +1,7 @@
 package bitespeed.backend.test.entity;
 
 import bitespeed.backend.test.enums.LinkPrecedence;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -18,6 +16,7 @@ import java.time.LocalDate;
 public class Contact {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
     @Email(message = "Email cannot be blank or invalid")
@@ -25,7 +24,7 @@ public class Contact {
 
     private String phoneNumber;
 
-    private int linkedId;
+    private Integer linkedId;
 
     @NotBlank
     private LinkPrecedence linkPrecedence;
@@ -37,4 +36,14 @@ public class Contact {
     private LocalDate updatedAt;
 
     private LocalDate deletedAt;
+
+    public Contact(String email, String phoneNumber, Integer linkedId, LinkPrecedence linkPrecedence, LocalDate createdAt, LocalDate updatedAt, LocalDate deletedAt) {
+        this.email = email;
+        this.phoneNumber = phoneNumber;
+        this.linkedId = linkedId;
+        this.linkPrecedence = linkPrecedence;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
+    }
 }

@@ -12,5 +12,7 @@ public class ContactController {
 
     @PostMapping("/identify")
     public ResponseEntity<?> indetifyContact() {
+
+        return ResponseEntity.ok("Hello");
     }
 }
