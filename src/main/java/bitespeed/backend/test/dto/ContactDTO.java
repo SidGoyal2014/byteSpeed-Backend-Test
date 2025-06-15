@@ -36,9 +36,9 @@ public class ContactDTO {
     @AllArgsConstructor
     public static class IdentifyContactResponseSimpleContactDTO {
         private Integer primaryContatctId;
-        private List<String> emails;
-        private List<String> phoneNumbers;
-        private List<Integer> secondaryContactIds;
+        private Set<String> emails;
+        private Set<String> phoneNumbers;
+        private Set<Integer> secondaryContactIds;
     }
 
     @Data
