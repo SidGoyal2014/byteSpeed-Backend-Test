@@ -29,8 +29,8 @@ public class ContactServiceImpl implements ContactService {
         String email = identifyContactRequestDTO.getEmail();
 
         // get all the matching contacts by phone or email
-        List<Contact> contactsByEmail = contactRepository.findByEmail(email);
-        List<Contact> contactsByPhone = contactRepository.findByPhoneNumber(phoneNumber);
+        List<Contact> contactsByEmail = contactRepository.findAllByEmail(email);
+        List<Contact> contactsByPhone = contactRepository.findAllByPhoneNumber(phoneNumber);
 
         // Create a list of all the contacts
         List<Contact> allContacts = new ArrayList<>();
@@ -56,7 +56,7 @@ public class ContactServiceImpl implements ContactService {
 
             // Return response
             responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(createContactDTO.getLinkedId())
+                    .primaryContatctId(newContact.getLinkedId())
                     .emails(List.of(createContactDTO.getEmail()))
                     .phoneNumbers(List.of(createContactDTO.getPhoneNumber()))
                     .secondaryContactIds(new ArrayList<>())

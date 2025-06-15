@@ -10,6 +10,8 @@ public interface IContactRepository extends JpaRepository<Contact, Integer> {
 
     List<Contact> findByEmail(String email);
     List<Contact> findByPhoneNumber(String phoneNumber);
+    List<Contact> findAllByEmail(String email);
+    List<Contact> findAllByPhoneNumber(String phoneNumber);
 
     // Custom query methods can be defined here if needed
     // For example:

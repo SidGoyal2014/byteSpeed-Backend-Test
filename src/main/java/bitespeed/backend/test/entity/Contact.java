@@ -4,6 +4,7 @@ import bitespeed.backend.test.enums.LinkPrecedence;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,13 +31,14 @@ public class Contact {
 
     private Integer linkedId;
 
-    @NotBlank
+    @NotNull(message = "Link precedence cannot be blank")
+    @Enumerated(EnumType.STRING)
     private LinkPrecedence linkPrecedence;
 
-    @NotBlank
+    @NotNull(message = "Created date cannot be blank")
     private LocalDate createdAt;
 
-    @NotBlank
+    @NotNull(message = "Updated date cannot be null")
     private LocalDate updatedAt;
 
     private LocalDate deletedAt;

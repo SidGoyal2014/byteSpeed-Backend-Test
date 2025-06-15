@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import bitespeed.backend.test.enums.LinkPrecedence;
 
 import java.util.List;
+import java.util.Set;
 
 public class ContactDTO {
 
