@@ -22,126 +22,128 @@ public class ContactServiceImpl implements ContactService {
     }
 
     @Override
-    public IdentifyContactResponseDTO identifyContact(IdentifyContactRequestDTO identifyContactRequestDTO) {
+    public IdentifyContactResponseDTO identifyContact(IdentifyContactRequestDTO request) {
+        String email = request.getEmail();
+        String phoneNumber = request.getPhoneNumber();
 
-        // System.out.println("Identify Contact Request: " + identifyContactRequestDTO);
-        // System.out.println("BABABABAB");
+        // Find all contacts matching either email or phone
+        List<Contact> contactsByEmail = email != null ? contactRepository.findAllByEmail(email) : new ArrayList<>();
+        List<Contact> contactsByPhone = phoneNumber != null ? contactRepository.findAllByPhoneNumber(phoneNumber) : new ArrayList<>();
 
-        // check if phone or email exists
-        String phoneNumber = identifyContactRequestDTO.getPhoneNumber();
-        String email = identifyContactRequestDTO.getEmail();
+        // Combine and deduplicate contacts
+        Set<Contact> allContactsSet = new HashSet<>();
+        allContactsSet.addAll(contactsByEmail);
+        allContactsSet.addAll(contactsByPhone);
+        List<Contact> allContacts = new ArrayList<>(allContactsSet);
 
-        // get all the matching contacts by phone or email
-        List<Contact> contactsByEmail = contactRepository.findAllByEmail(email);
-        List<Contact> contactsByPhone = contactRepository.findAllByPhoneNumber(phoneNumber);
+        Contact primaryContact;
 
-        // Create a list of all the contacts
-        List<Contact> allContacts = new ArrayList<>();
-        allContacts.addAll(contactsByEmail);
-        allContacts.addAll(contactsByPhone);
+        if (allContacts.isEmpty()) {
+            // Scenario 1: No existing contacts - create new primary contact
+            primaryContact = createNewPrimaryContact(email, phoneNumber);
+            allContacts.add(primaryContact);
+        } else {
+            // Find the oldest contact to be the primary
+            Contact oldestContact = allContacts.stream()
+                    .min(Comparator.comparing(Contact::getCreatedAt))
+                    .orElse(allContacts.get(0));
 
-        for(Contact contact : allContacts){
-            System.out.println("Contact: " + contact);
+            // Check if we need to link contacts or create a new secondary
+            boolean emailExists = contactsByEmail.stream()
+                    .anyMatch(c -> Objects.equals(c.getEmail(), email));
+            boolean phoneExists = contactsByPhone.stream()
+                    .anyMatch(c -> Objects.equals(c.getPhoneNumber(), phoneNumber));
+
+            if (!emailExists || !phoneExists) {
+                // Scenario 2: New email or phone - create secondary contact
+                if ((email != null && !emailExists) || (phoneNumber != null && !phoneExists)) {
+                    Contact newSecondary = createNewSecondaryContact(email, phoneNumber, oldestContact.getId());
+                    allContacts.add(newSecondary);
+                }
+            }
+
+            // Scenario 3: Link existing separate contacts
+            linkExistingContacts(allContacts, oldestContact);
+            primaryContact = oldestContact;
         }
 
-        // Get the primary Contact
-        Contact primaryContact = getPrimaryContact(allContacts);
-        System.out.println("Primary Contact: " + primaryContact);
+        // Build response
+        return buildResponse(allContacts, primaryContact);
+    }
 
-        // Select the contact with the oldest createdOn date as primary
-        Contact oldestContact = allContacts.stream()
-                        .min((c1, c2) -> c1.getCreatedAt().compareTo(c2.getCreatedAt()))
-                        .orElse(primaryContact);
+    private Contact createNewPrimaryContact(String email, String phoneNumber) {
+        Contact contact = Contact.builder()
+                .email(email)
+                .phoneNumber(phoneNumber)
+                .linkedId(null)
+                .linkPrecedence(LinkPrecedence.primary)
+                .createdAt(LocalDate.now())
+                .updatedAt(LocalDate.now())
+                .build();
+        return contactRepository.save(contact);
+    }
 
-        System.out.println("Oldest Contact: " + oldestContact);
+    private Contact createNewSecondaryContact(String email, String phoneNumber, Integer primaryId) {
+        Contact contact = Contact.builder()
+                .email(email)
+                .phoneNumber(phoneNumber)
+                .linkedId(primaryId)
+                .linkPrecedence(LinkPrecedence.secondary)
+                .createdAt(LocalDate.now())
+                .updatedAt(LocalDate.now())
+                .build();
+        return contactRepository.save(contact);
+    }
 
-        // Create Response Contact
-        IdentifyContactResponseSimpleContactDTO responseContact = null;
+    private void linkExistingContacts(List<Contact> allContacts, Contact primaryContact) {
+        for (Contact contact : allContacts) {
+            if (contact.getId() != primaryContact.getId()) {
+                if (contact.getLinkPrecedence() == LinkPrecedence.primary) {
+                    // Convert other primary contacts to secondary
+                    contact.setLinkPrecedence(LinkPrecedence.secondary);
+                    contact.setLinkedId(primaryContact.getId());
+                    contact.setUpdatedAt(LocalDate.now());
+                    contactRepository.save(contact);
+                } else if (!Objects.equals(contact.getLinkedId(), primaryContact.getId())) {
+                    // Update secondary contacts to point to the correct primary
+                    contact.setLinkedId(primaryContact.getId());
+                    contact.setUpdatedAt(LocalDate.now());
+                    contactRepository.save(contact);
+                }
+            }
+        }
+    }
 
-        Set<Integer> secondaryContacts = allContacts.stream()
-                .filter(contact -> (contact.getLinkPrecedence() == LinkPrecedence.secondary)
-                                    &&
-                                    (contact.getId() != oldestContact.getId()))
+    private IdentifyContactResponseDTO buildResponse(List<Contact> allContacts, Contact primaryContact) {
+        // Get all linked contacts (including those linked to this primary)
+        List<Contact> allLinkedContacts = contactRepository.findAllByLinkedId(primaryContact.getId());
+        allLinkedContacts.addAll(allContacts);
+        allLinkedContacts = allLinkedContacts.stream().distinct().collect(Collectors.toList());
+
+        Set<String> emails = allLinkedContacts.stream()
+                .map(Contact::getEmail)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<String> phoneNumbers = allLinkedContacts.stream()
+                .map(Contact::getPhoneNumber)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Set<Integer> secondaryContactIds = allLinkedContacts.stream()
+                .filter(c -> c.getLinkPrecedence() == LinkPrecedence.secondary)
                 .map(Contact::getId)
                 .collect(Collectors.toSet());
 
-        if((contactsByEmail == null || contactsByEmail.isEmpty()) && (contactsByPhone == null || contactsByPhone.isEmpty())){
-            // create a new Contact
-            CreateContactDTO createContactDTO = CreateContactDTO.builder()
-                                                    .email(email)
-                                                    .phoneNumber(phoneNumber)
-                                                    .linkPrecedence(LinkPrecedence.primary)
-                                                    .linkedId(null)
-                                                    .build();
-
-            Contact newContact = createContact(createContactDTO);
-
-            // Return response
-            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(newContact.getLinkedId())
-                    .emails(Set.of(createContactDTO.getEmail()))
-                    .phoneNumbers(Set.of(createContactDTO.getPhoneNumber()))
-                    .secondaryContactIds(new HashSet<>())
-                    .build();
-        }
-        else if(contactsByEmail != null && !contactsByEmail.isEmpty() && contactsByPhone != null && !contactsByPhone.isEmpty()){
-
-            // Return response
-            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(oldestContact.getId())
-                    .emails(allContacts.stream().map(Contact::getEmail).collect(Collectors.toSet()))
-                    .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).collect(Collectors.toSet()))
-                    .secondaryContactIds(secondaryContacts)
-                    .build();
-        } else{
-            // create Contact
-            CreateContactDTO newContact = CreateContactDTO.builder()
-                    .email(email)
-                    .phoneNumber(phoneNumber)
-                    .linkPrecedence(LinkPrecedence.secondary)
-                    .linkedId(oldestContact.getId())
-                    .build();
-
-            Contact addedContact = createContact(newContact);
-
-            allContacts.add(addedContact);
-
-            // Return response
-            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(oldestContact.getId())
-                    .emails(allContacts.stream().map(Contact::getEmail).collect(Collectors.toSet()))
-                    .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).collect(Collectors.toSet()))
-                    .secondaryContactIds(secondaryContacts)
-                    .build();
-        }
+        IdentifyContactResponseSimpleContactDTO responseContact = IdentifyContactResponseSimpleContactDTO.builder()
+                .primaryContactId(primaryContact.getId()) // Fixed typo
+                .emails(emails)
+                .phoneNumbers(phoneNumbers)
+                .secondaryContactIds(secondaryContactIds)
+                .build();
 
         return IdentifyContactResponseDTO.builder()
                 .contact(responseContact)
                 .build();
-
-    }
-
-    private Contact getPrimaryContact(List<Contact> contacts){
-        return contacts.stream()
-                .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.primary)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Contact createContact(final CreateContactDTO createContactDTO){
-
-        Contact contact = new Contact(
-                createContactDTO.getEmail(),
-                createContactDTO.getPhoneNumber(),
-                createContactDTO.getLinkedId(),
-                createContactDTO.getLinkPrecedence(),
-                LocalDate.now(),
-                LocalDate.now(),
-                null
-        );
-
-        contactRepository.save(contact);
-
-        return contact;
     }
 }

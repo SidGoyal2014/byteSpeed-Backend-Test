@@ -35,7 +35,7 @@ public class ContactDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class IdentifyContactResponseSimpleContactDTO {
-        private Integer primaryContatctId;
+        private Integer primaryContactId;
         private Set<String> emails;
         private Set<String> phoneNumbers;
         private Set<Integer> secondaryContactIds;
