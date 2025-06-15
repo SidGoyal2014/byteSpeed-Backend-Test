@@ -24,6 +24,9 @@ public class ContactServiceImpl implements ContactService {
     @Override
     public IdentifyContactResponseDTO identifyContact(IdentifyContactRequestDTO identifyContactRequestDTO) {
 
+        System.out.println("Identify Contact Request: " + identifyContactRequestDTO);
+        System.out.println("BABABABAB");
+
         // check if phone or email exists
         String phoneNumber = identifyContactRequestDTO.getPhoneNumber();
         String email = identifyContactRequestDTO.getEmail();
@@ -37,8 +40,20 @@ public class ContactServiceImpl implements ContactService {
         allContacts.addAll(contactsByEmail);
         allContacts.addAll(contactsByPhone);
 
+        for(Contact contact : allContacts){
+            System.out.println("Contact: " + contact);
+        }
+
         // Get the primary Contact
         Contact primaryContact = getPrimaryContact(allContacts);
+        System.out.println("Primary Contact: " + primaryContact);
+
+        // Select the contact with the oldest createdOn date as primary
+        Contact oldestContact = allContacts.stream()
+                        .min((c1, c2) -> c1.getCreatedAt().compareTo(c2.getCreatedAt()))
+                        .orElse(primaryContact);
+
+        System.out.println("Oldest Contact: " + oldestContact);
 
         // Create Response Contact
         IdentifyContactResponseSimpleContactDTO responseContact = null;
@@ -64,23 +79,23 @@ public class ContactServiceImpl implements ContactService {
         }
         else if(contactsByEmail != null && !contactsByEmail.isEmpty() && contactsByPhone != null && !contactsByPhone.isEmpty()){
 
-            // Return response
-            responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(primaryContact.getId())
-                    .emails(allContacts.stream().map(Contact::getEmail).toList())
-                    .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).toList())
-                    .secondaryContactIds(allContacts.stream()
-                            .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.secondary)
-                            .map(Contact::getId)
-                            .toList())
-                    .build();
+                // Return response
+                responseContact = IdentifyContactResponseSimpleContactDTO.builder()
+                                .primaryContatctId(oldestContact.getId())
+                                .emails(allContacts.stream().map(Contact::getEmail).toList())
+                                .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).toList())
+                                .secondaryContactIds(allContacts.stream()
+                                        .filter(contact -> contact.getLinkPrecedence() == LinkPrecedence.secondary)
+                                        .map(Contact::getId)
+                                        .toList())
+                                .build();
         } else{
             // create Contact
             CreateContactDTO newContact = CreateContactDTO.builder()
                     .email(email)
                     .phoneNumber(phoneNumber)
                     .linkPrecedence(LinkPrecedence.secondary)
-                    .linkedId(primaryContact.getId())
+                    .linkedId(oldestContact.getId())
                     .build();
 
             Contact addedContact = createContact(newContact);
@@ -89,7 +104,7 @@ public class ContactServiceImpl implements ContactService {
 
             // Return response
             responseContact = IdentifyContactResponseSimpleContactDTO.builder()
-                    .primaryContatctId(primaryContact.getId())
+                    .primaryContatctId(oldestContact.getId())
                     .emails(allContacts.stream().map(Contact::getEmail).toList())
                     .phoneNumbers(allContacts.stream().map(Contact::getPhoneNumber).toList())
                     .secondaryContactIds(allContacts.stream()
